@@ -1,0 +1,38 @@
+\begin{table*}[t]
+\centering
+\caption{Comprehensive comparison of RUL predictors and maintenance policies on PRONOSTIA bearing 3\_2 (Condition 3). Bold = best per column.}
+\label{tab:master}
+\setlength{\tabcolsep}{5pt}
+\begin{tabular}{l c c c c c}
+\toprule
+Method / Policy & Metric-1 & Metric-2 & Metric-3 & Metric-4 & Notes \\
+\midrule
+\multicolumn{6}{l}{\textit{Part I — RUL Prediction (bearing 3\_2)}} \\
+\midrule
+\quad & Full-RMSE $\downarrow$ & Late-RMSE $\downarrow$ & MAE $\downarrow$ & Uncertainty & \\
+XGBoost & 12.96 & 28.78 & 4.40 & -- & Point estimate \\
+GRU & 10.00 & 22.33 & 2.64 & -- & Point estimate \\
+TCN & 13.39 & 29.51 & 5.44 & -- & Point estimate \\
+CNN-baseline & 12.23 & 27.32 & 2.99 & -- & Point estimate \\
+LSTM-baseline & \textbf{9.64} & \textbf{21.51} & \textbf{2.60} & -- & Point estimate \\
+\textbf{Conv-SA (ours)} & 21.78 & 27.99 & 19.70 & MC Dropout & Epistemic uncertainty \\
+\midrule
+\multicolumn{6}{l}{\textit{Part II — Predictive Uncertainty Calibration}} \\
+\midrule
+\quad & RMSE $\downarrow$ & ECE $\downarrow$ & PICP@95\% $\uparrow$ & MPIW@95\% $\downarrow$ & \\
+Deterministic & 21.23 & 0.7295 & 0.045 & \textbf{0.00} & \\
+MC Dropout & 18.20 & \textbf{0.1265} & 0.933 & 55.91 & \\
+Deep Ensemble & \textbf{13.89} & 0.1542 & \textbf{0.953} & 11.62 & \\
+\midrule
+\multicolumn{6}{l}{\textit{Part III — RL Maintenance Policies}} \\
+\midrule
+\quad & Cost $\mu$ $\downarrow$ & Cost $\sigma$ $\downarrow$ & Catast.\% $\downarrow$ & Avg Reward $\uparrow$ & \\
+ThresholdPolicy & 189.9 & 188.4 & \textbf{0.00} & -189.9 & \\
+DDQN & 150.6 & 112.0 & 1.33 & -150.6 & \\
+Dueling DQN & \textbf{104.0} & 101.7 & 0.67 & \textbf{-104.0} & \\
+PPO & 336.6 & 280.7 & 17.33 & -336.6 & \\
+Risk-Neutral DQN & 183.6 & \textbf{40.8} & 10.00 & -183.6 & \\
+\textbf{CVaR QR-DQN (ours)} & 254.6 & 43.7 & 7.00 & -254.6 & \\
+\bottomrule
+\end{tabular}
+\end{table*}

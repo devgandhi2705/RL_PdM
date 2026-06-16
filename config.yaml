@@ -1,0 +1,124 @@
+seed: 42
+
+data:
+  train_bearings: ["1_1", "1_2", "2_1", "2_2", "3_1"]
+  test_bearings:  ["3_2"]
+  rul_clip:       125
+  window_size:    32
+  stride:         1
+
+dataset:
+  raw_dir: data/raw
+  processed_dir: data/processed
+
+  # Bearing folders follow the pattern Bearing{cond}_{idx}
+  # Each folder contains acc_00001.csv ... acc_NNNNN.csv
+  samples_per_file: 2560          # rows per CSV (fixed by PRONOSTIA protocol)
+  n_channels: 2                   # horiz_acc (col 5) and vert_acc (col 6)
+  max_rul: 125                    # piece-wise linear health index cap (standard)
+
+  # Operating conditions — only bearings present on disk
+  # IDs are quoted strings to prevent YAML 1.1 from parsing e.g. 1_1 as int 11.
+  conditions:
+    1: ["1_1", "1_2"]
+    2: ["2_1", "2_2"]
+    3: ["3_1", "3_2"]
+
+  # Train/test split for the RUL predictor (supervised learning).
+  # The RL agent uses all 6 bearings for episode diversity.
+  train_bearings: ["1_1", "1_2", "2_1", "2_2", "3_1"]
+  test_bearings:  ["3_2"]
+
+features:
+  window_size: 2560               # one file = one window (fixed by PRONOSTIA)
+  n_features: 32                  # 12 time-domain + 4 freq-domain, × 2 channels
+  sampling_freq: 25600            # Hz — PRONOSTIA accelerometer rate
+  scaler_path: results/scaler.pkl
+
+env:
+  # --- cost parameters ---
+  c_rep:          3.0          # repair base cost
+  c_repl:         6.0          # replacement base cost
+  c_down:         0.5          # downtime cost per fixed step
+  lambda_risk:    6.0          # CFP risk multiplier (repair)
+  lambda_waste:   0.015        # early-replacement waste penalty per RUL unit
+  lambda_hold:    0.02         # holding cost multiplier (scaled by CFP)
+  c_fail:         80.0         # catastrophic failure terminal cost
+  # --- timing ---
+  tau:            30           # CFP horizon (timesteps)
+  rul_max:        125          # RUL cap
+  t_scheduled:    20           # RUL threshold for "on-schedule" replacement
+  downtime_steps: 5            # repair downtime steps baked into cost
+  # --- episode ---
+  max_steps:      500
+  n_mc_samples:   50
+  window_size:    32
+  start_from_random_step: false  # true = start episodes at random position
+
+qrdqn:
+  n_quantiles: 51
+  hidden_dims: [256, 256]
+  lr: 1.0e-4
+  gamma: 0.99
+  batch_size: 64
+  replay_capacity: 50000
+  target_update_freq: 500         # steps
+  epsilon_start: 1.0
+  epsilon_end: 0.05
+  epsilon_decay_steps: 20000
+  tau: 1.0                        # hard update (set <1 for soft update)
+
+training:
+  total_episodes:        8000
+  max_steps_per_episode: 500
+  warmup_episodes:       100     # random-action episodes to pre-fill replay buffer
+  eval_interval:         200     # evaluate every N training episodes
+  save_interval:         500     # periodic checkpoint every N episodes
+  n_eval_episodes:       100     # greedy rollouts per evaluation
+  n_final_episodes:      500     # rollouts per policy in final comparison
+  batch_size:            64
+  learning_rate:         0.001
+  gamma:                 0.99
+  epsilon_start:         1.0
+  epsilon_end:           0.05
+  epsilon_decay_steps:   5000
+  target_update_freq:    100     # hard target-network copy every N optimiser steps
+  replay_buffer_size:    100000
+  N_quantiles:           51
+  cvar_alpha:            0.25    # CVaR tail fraction (lowest 25 % of quantiles)
+  risk_mode:             cvar    # "cvar" (risk-averse) or "mean" (risk-neutral)
+  smooth_window:         50      # window size for smoothed training-curve plot
+  n_mc_samples_train:    10     # MC samples per inference step during training (fast)
+  infer_interval:         5     # re-run MC inference every N steps; interpolate between
+  seed:                  42
+  device:                auto    # "auto" detects GPU; or force "cuda"/"mps"/"cpu"
+  results_dir:           results
+
+rl:
+  total_episodes:         5000
+  warmup_episodes:        100
+  eval_interval:          200
+  max_steps:              400
+  batch_size:             128
+  learning_rate:          5.0e-4
+  gamma:                  0.99
+  epsilon_start:          1.0
+  epsilon_end:            0.10
+  epsilon_decay_episodes: 3000
+  target_update_freq:     200
+  replay_buffer_size:     50000
+  N_quantiles:            51
+  cvar_alpha:             0.40
+  risk_mode:              cvar
+  n_mc_samples_train:     10
+  n_mc_samples_eval:      50
+  infer_interval:         1
+  n_eval_episodes:        100
+  n_final_episodes:       300
+  seed:                   42
+  processed_dir:          data/processed
+  results_dir:            results
+
+logging:
+  level: INFO
+  log_file: results/train.log
