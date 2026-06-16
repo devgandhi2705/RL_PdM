@@ -86,4 +86,5 @@ python -m src.final_figures                 # consolidated paper figures + maste
 
 ## License
 
-MIT — see [LICENSE](LICENSE).
+All rights reserved — unpublished research code for an academic conference
+submission. See [LICENSE](LICENSE). Not licensed for public or third-party use.
