@@ -119,6 +119,28 @@ rl:
   processed_dir:          data/processed
   results_dir:            results
 
+d3qn:
+  total_episodes:         5000
+  warmup_episodes:        100
+  eval_interval:          200
+  batch_size:             128
+  learning_rate:          5.0e-4
+  gamma:                  0.99
+  epsilon_start:          1.0
+  epsilon_end:            0.10
+  epsilon_decay_episodes: 3000
+  target_update_freq:     200
+  replay_buffer_size:     50000
+  N_quantiles:            51
+  cvar_alpha:             0.40
+  risk_mode:              cvar
+  n_mc_samples:           10
+  n_eval_episodes:        100
+  n_final_episodes:       300
+  seed:                   42
+  processed_dir:          data/processed
+  results_dir:            results
+
 logging:
   level: INFO
   log_file: results/train.log

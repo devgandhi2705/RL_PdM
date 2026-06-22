@@ -57,13 +57,18 @@
 
 ---
 
-## Phase 4 — Dueling Distributional QR-DQN (in progress)
+## Phase 4 — Dueling Distributional QR-DQN (D3QN-CVaR) — Implementation
 
-- **Goal:** Combine uncertainty-aware state (from Phase 2 State C) + dueling network architecture (from Phase 2 RL benchmarks) + distributional RL + CVaR in a single agent
-- **Hypothesis:** Dueling architecture should improve advantage estimation; combined with CVaR risk-shaping over quantile distribution, this should beat all prior agents on the cost–catastrophe Pareto frontier
-- **Architecture plan:** QR-DQN backbone with separate value/advantage streams before quantile head; state input = State C (3D: [RUL_norm, sigma_norm, CFP]) or full 5D
-- **Status:** Logging + git infrastructure set up (Phase 4 commit). Implementation pending.
+- **Architecture:** 3D state [RUL_norm, sigma_norm, CFP] -> shared encoder (2xLinear(128)+LayerNorm+ReLU) -> value stream (N_quantiles scalars) + advantage stream (n_actions x N_quantiles) -> per-quantile dueling combination -> CVaR action selection (alpha=0.40)
+- **Files added:**
+  - `src/dueling_qrdqn.py` — D3QNetwork, D3QNAgent, ThreeDStateEnv
+  - `src/train_d3qn.py` — training loop (mirrors train.py), sanity check, dry-run flag
+  - `src/evaluate_d3qn.py` — comparison vs all prior agents, 3 figures, significance table
+- **Config:** `d3qn:` section added to `config.yaml`
+- **Status:** Implementation complete, dry-run verified. Full 5000-episode training PENDING (run: `python -m src.train_d3qn --episodes 5000`)
+- **Known caveat going in:** Prior agents trained on 5D state; D3QN-CVaR trained on 3D state. Comparison table includes State Dim column rather than claiming false parity.
+- **Comparison plan:** vs DQN/DDQN/Dueling/QR-DQN/CVaR-QRDQN on cost, catastrophe rate, avg reward (each evaluated in state space they were trained on)
 
 ---
 
-*Updated: Phase 4 setup (logging, gitignore, experiment log added)*
+*Updated: Phase 4 implementation complete*

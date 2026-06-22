@@ -59,4 +59,5 @@ def setup_logger(name: str) -> logging.Logger:
 
     logger.addHandler(ch)
     logger.addHandler(fh)
+    logger.propagate = False  # prevent double-printing via root's lastResort handler
     return logger
