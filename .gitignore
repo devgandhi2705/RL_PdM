@@ -17,8 +17,19 @@ data/processed/*
 !data/raw/.gitkeep
 !data/processed/.gitkeep
 
+# Jupyter
+.ipynb_checkpoints/
+
 # Logs
 *.log
+logs/*.log
+
+# Results (figures, tables, metrics — regenerable, not versioned)
+results/*.png
+results/*.csv
+results/*.tex
+results/*.json
+!results/.gitkeep
 
 # OS / editor cruft
 .DS_Store
