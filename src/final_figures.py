@@ -97,22 +97,24 @@ _BEARING_IDS = ["1_1", "1_2", "2_1", "2_2", "3_1", "3_2"]
 # ===========================================================================
 
 def load_all_csvs(results_dir: Path) -> Dict[str, pd.DataFrame]:
-    """Load every known CSV from results_dir. Missing files are skipped."""
+    """Load every known CSV from its producing experiment folder under
+    results_dir.parent. Missing files are skipped."""
     files = {
-        "rul":         "table1_rul.csv",
-        "rul_base":    "table_rul_baselines.csv",
-        "uncertainty": "table_uncertainty.csv",
-        "benchmarks":  "table_rl_benchmarks.csv",
-        "final_comp":  "final_comparison.csv",
-        "state_abl":   "table_state_ablation.csv",
-        "risk":        "table_risk_analysis.csv",
-        "repair":      "table_repair_ablation.csv",
-        "policy2":     "table2_policy.csv",
-        "train_log":   "training_log.csv",
+        "rul":         ("00_primary_cvar_qrdqn",                       "table1_rul.csv"),
+        "rul_base":    ("02_rul_baselines_xgboost_gru_tcn",             "table_rul_baselines.csv"),
+        "uncertainty": ("03_uncertainty_validation",                    "table_uncertainty.csv"),
+        "benchmarks":  ("04_rl_benchmarks_ddqn_dueling_ppo",            "table_rl_benchmarks.csv"),
+        "final_comp":  ("00_primary_cvar_qrdqn",                        "final_comparison.csv"),
+        "state_abl":   ("05_state_ablation",                            "table_state_ablation.csv"),
+        "risk":        ("06_risk_analysis_cvar_alpha_sweep",            "table_risk_analysis.csv"),
+        "repair":      ("07_repair_ablation",                           "table_repair_ablation.csv"),
+        "policy2":     ("00_primary_cvar_qrdqn",                        "table2_policy.csv"),
+        "train_log":   ("00_primary_cvar_qrdqn",                        "training_log.csv"),
     }
+    root = results_dir.parent
     data: Dict[str, pd.DataFrame] = {}
-    for key, fname in files.items():
-        path = results_dir / fname
+    for key, (subfolder, fname) in files.items():
+        path = root / subfolder / fname
         if path.exists():
             data[key] = pd.read_csv(path)
             logger.info("Loaded %s (%d rows)", fname, len(data[key]))
@@ -167,7 +169,7 @@ def load_rul_predictions(
 
     feat_path = processed_dir / "3_2_features.npy"
     rul_path  = processed_dir / "3_2_rul.npy"
-    ckpt_path = results_dir   / "rul_model_best.pth"
+    ckpt_path = results_dir.parent / "01_rul_predictor" / "rul_model_best.pth"
 
     for p in (feat_path, rul_path, ckpt_path):
         if not p.exists():
@@ -190,8 +192,9 @@ def load_rul_predictions(
         # Deep Ensemble
         ens_seeds = [42, 123, 456, 789, 1024]
         ens_preds: List[np.ndarray] = []
+        ens_dir = results_dir.parent / "03_uncertainty_validation"
         for seed in ens_seeds:
-            ep = results_dir / f"ensemble_{seed}.pth"
+            ep = ens_dir / f"ensemble_{seed}.pth"
             if not ep.exists():
                 continue
             em = ConvSARULPredictor()
@@ -909,7 +912,7 @@ def main() -> None:
         description="Generate all publication-quality figures from phase results."
     )
     p.add_argument("--processed-dir", default="data/processed", type=Path)
-    p.add_argument("--results-dir",   default="results",        type=Path)
+    p.add_argument("--results-dir",   default="results/11_final_figures_master", type=Path)
     p.add_argument("--device",        default=None,
                    help="Compute device for RUL inference: cuda | cpu (default: auto)")
     p.add_argument("--no-inference",  action="store_true",

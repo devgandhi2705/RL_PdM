@@ -1,6 +1,0 @@
-policy,mean_total_cost,std_total_cost,catastrophe_rate,mean_TTR,mean_n_repairs,mean_n_replacements,dn_pct,rp_pct,rx_pct,mean_episode_length
-CM (Corrective),317.0711,289.8248,0.1733,,0.0,0.0,1.0,0.0,0.0,356.49
-PM (Periodic-50),187.1349,74.3373,0.3533,50.0,0.0,5.8267,0.9824,0.0,0.0176,331.09
-ThresholdPolicy,189.881,188.4027,0.0,,0.8367,0.0,0.9979,0.0021,0.0,400.0
-RiskNeutral-DQN,184.988,46.6942,0.12,42.21,0.28,8.7167,0.9575,0.0195,0.023,379.41
-RiskAverse-QR-DQN,252.2682,46.6082,0.09,45.46,0.3767,7.88,0.9314,0.048,0.0206,381.87

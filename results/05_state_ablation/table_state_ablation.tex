@@ -1,0 +1,13 @@
+\begin{table}[t]
+\centering
+\caption{State representation ablation (300 evaluation episodes, seed=42)}
+\label{tab:state_ablation}
+\begin{tabular}{clcrrr}
+\toprule
+\textbf{State} & \textbf{Components} & \textbf{Dims} & \textbf{Cost $\mu$} & \textbf{Catastrophe \%} & \textbf{Avg Reward} \\
+\midrule
+C & RUL_norm, sigma_norm, CFP & 3 & \textbf{171.39} & \textbf{0.0}\% & \textbf{-171.39} \\
+D & HI, slope, RUL, repairs, steps & 5 & 255.70 & 8.3\% & -255.70   % ours \\
+\bottomrule
+\end{tabular}
+\end{table}

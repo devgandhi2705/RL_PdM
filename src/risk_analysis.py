@@ -614,8 +614,8 @@ def main() -> None:
         help="Path to processed HI/RUL .npy files (default: data/processed)",
     )
     p.add_argument(
-        "--results-dir", default="results", type=Path,
-        help="Directory for checkpoints and outputs (default: results)",
+        "--results-dir", default="results/06_risk_analysis_cvar_alpha_sweep", type=Path,
+        help="Directory for checkpoints and outputs (default: results/06_risk_analysis_cvar_alpha_sweep)",
     )
     p.add_argument("--device", default=None,
                    help="Compute device: cuda | mps | cpu (default: auto)")

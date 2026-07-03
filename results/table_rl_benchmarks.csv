@@ -1,7 +1,0 @@
-Policy,Cost_mu,Cost_sigma,Catastrophe_pct,Avg_Reward,Repairs_per_ep,Replaces_per_ep,DoNothing_pct
-ThresholdPolicy,189.881,188.403,0.0,-189.881,0.837,0.0,99.79
-DDQN,150.589,111.983,1.33,-150.589,0.01,0.86,99.78
-Dueling DQN,103.984,101.747,0.67,-103.984,0.787,0.233,99.74
-PPO,336.57,280.739,17.33,-336.57,0.0,0.0,100.0
-Risk-Neutral DQN,183.581,40.838,10.0,-183.581,0.217,8.757,95.69
-CVaR QR-DQN (ours),254.613,43.682,7.0,-254.613,0.53,7.913,93.1

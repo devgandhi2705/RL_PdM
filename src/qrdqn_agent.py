@@ -529,7 +529,7 @@ def train_qrdqn(
     eval_every: int              = 50,
     n_eval_episodes: int         = 5,
     save_every: int              = 200,
-    save_path: str | Path        = "results/qrdqn_best.pth",
+    save_path: str | Path        = "results/00_primary_cvar_qrdqn/qrdqn_best.pth",
     seed: int                    = 42,
 ) -> Dict[str, List[float]]:
     """Full training loop for :class:`QRDQNAgent` on a PdMBearingEnv.

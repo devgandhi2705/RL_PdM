@@ -1,0 +1,4 @@
+method,Full-RMSE,Late-RMSE,MAE,Epist-Unc
+Conv-SA (ours),21.7803,27.987,19.6961,11.8182
+LSTM-baseline,9.6447,21.514,2.5976,nan
+CNN-baseline,12.2309,27.3151,2.9932,nan

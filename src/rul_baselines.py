@@ -334,8 +334,8 @@ _NOTES: Dict[str, str] = {
 
 
 def _load_table1(results_dir: Path) -> Dict[str, Dict[str, float]]:
-    """Load CNN/LSTM/Conv-SA rows from results/table1_rul.csv if available."""
-    p   = results_dir / "table1_rul.csv"
+    """Load CNN/LSTM/Conv-SA rows from results/00_primary_cvar_qrdqn/table1_rul.csv if available."""
+    p   = results_dir.parent / "00_primary_cvar_qrdqn" / "table1_rul.csv"
     out: Dict[str, Dict[str, float]] = {}
     if not p.exists():
         return out
@@ -536,7 +536,7 @@ if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO, format="%(levelname)-8s %(message)s")
 
     _proc_dir    = _PROJ / "data" / "processed"
-    _results_dir = _PROJ / "results"
+    _results_dir = _PROJ / "results" / "02_rul_baselines_xgboost_gru_tcn"
     _results_dir.mkdir(parents=True, exist_ok=True)
 
     _device = get_device(verbose=True)

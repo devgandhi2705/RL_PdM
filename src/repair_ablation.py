@@ -474,7 +474,7 @@ def run_ablation(
 
     perfect_ckpt = results_dir / "repair_perfect.pth"
     decay_ckpt   = results_dir / "repair_decay.pth"
-    fallback_ckpt = results_dir / "qrdqn_best.pth"
+    fallback_ckpt = results_dir.parent / "00_primary_cvar_qrdqn" / "qrdqn_best.pth"
 
     # ---- Perfect Repair env + agent ----------------------------------------
     perfect_env   = make_perfect_repair_env(processed_dir, seed=seed)
@@ -798,7 +798,7 @@ def main() -> None:
         description="Repair model ablation: Perfect vs Exponential Decay repair."
     )
     p.add_argument("--processed-dir", default="data/processed", type=Path)
-    p.add_argument("--results-dir",   default="results",        type=Path)
+    p.add_argument("--results-dir",   default="results/07_repair_ablation", type=Path)
     p.add_argument("--device",        default=None)
     p.add_argument("--seed",          default=42, type=int)
     p.add_argument("--force-retrain", action="store_true")
@@ -828,7 +828,7 @@ def main() -> None:
 
         perfect_ckpt = results_dir / "repair_perfect.pth"
         decay_ckpt   = results_dir / "repair_decay.pth"
-        fallback_ckpt = results_dir / "qrdqn_best.pth"
+        fallback_ckpt = results_dir.parent / "00_primary_cvar_qrdqn" / "qrdqn_best.pth"
 
         if perfect_ckpt.exists():
             perfect_agent.load_checkpoint(perfect_ckpt)

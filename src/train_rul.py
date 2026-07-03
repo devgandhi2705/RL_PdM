@@ -79,7 +79,7 @@ _DEFAULTS: Dict[str, Any] = {
     "grad_clip":    1.0,
     "n_mc_eval":    50,
     "seed":         42,
-    "results_dir":  "results",
+    "results_dir":  "results/01_rul_predictor",
 }
 
 
@@ -662,7 +662,7 @@ def main() -> None:
     if args.batch    is not None: cfg["batch_size"] = args.batch
 
     device_str    = args.device if args.device else get_device()
-    results_dir   = Path(str(cfg.get("results_dir", "results")))
+    results_dir   = Path(str(cfg.get("results_dir", "results/01_rul_predictor")))
     processed_dir = Path(
         raw_cfg.get("dataset", {}).get("processed_dir", "data/processed")
     )

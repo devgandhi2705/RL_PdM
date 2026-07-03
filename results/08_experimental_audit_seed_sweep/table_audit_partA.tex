@@ -1,0 +1,17 @@
+\begin{table}[t]
+\centering
+\caption{Part A -- current performance audit across all existing RL agents.}
+\label{tab:audit_a}
+\begin{tabular}{lccccc}
+\toprule
+Policy & Total Cost & Catast.\% & Repairs & Replacements & Avg Reward \\
+\midrule
+ThresholdPolicy & 189.88 & \textbf{0.00} & 0.84 & 0.00 & -189.88 \\
+DDQN & 58.28 & 2.00 & 0.00 & 1.74 & -58.28 \\
+Dueling DQN & 64.25 & 2.00 & 0.00 & 1.95 & -64.25 \\
+PPO & \textbf{57.40} & 2.67 & 0.00 & 1.88 & \textbf{-57.40} \\
+Risk-Neutral QR-DQN & 187.24 & 8.33 & 0.22 & 8.85 & -187.24 \\
+\textbf{CVaR QR-DQN (ours)} & 252.36 & 12.33 & 0.48 & 7.84 & -252.36 \\
+\bottomrule
+\end{tabular}
+\end{table}

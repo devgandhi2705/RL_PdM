@@ -109,25 +109,28 @@ def run_part_a(env, results_dir: Path, device_str: str) -> Dict[str, Dict[str, A
     """Evaluate every existing trained RL agent over EVAL_EPISODES greedy rollouts."""
     agents: Dict[str, Any] = {"ThresholdPolicy": ThresholdPolicy()}
 
-    ddqn_ckpt = results_dir / "ddqn_best.pth"
+    benchmarks_dir = results_dir.parent / "04_rl_benchmarks_ddqn_dueling_ppo"
+    primary_dir    = results_dir.parent / "00_primary_cvar_qrdqn"
+
+    ddqn_ckpt = benchmarks_dir / "ddqn_best.pth"
     if ddqn_ckpt.exists():
         a = DDQNAgent(device=device_str)
         a.load_checkpoint(ddqn_ckpt)
         agents["DDQN"] = a
 
-    dueling_ckpt = results_dir / "dueling_dqn_best.pth"
+    dueling_ckpt = benchmarks_dir / "dueling_dqn_best.pth"
     if dueling_ckpt.exists():
         a = DuelingDQNAgent(device=device_str)
         a.load_checkpoint(dueling_ckpt)
         agents["Dueling DQN"] = a
 
-    ppo_ckpt = results_dir / "ppo_best.pth"
+    ppo_ckpt = benchmarks_dir / "ppo_best.pth"
     if ppo_ckpt.exists():
         a = PPOAgent(device=device_str)
         a.load_checkpoint(ppo_ckpt)
         agents["PPO"] = a
 
-    qrdqn_ckpt = results_dir / "qrdqn_best.pth"
+    qrdqn_ckpt = primary_dir / "qrdqn_best.pth"
     if qrdqn_ckpt.exists():
         rn = QRDQNAgent(risk_mode="cvar", cvar_alpha=CVAR_ALPHA, device=device_str)
         rn.load_checkpoint(qrdqn_ckpt)
@@ -449,7 +452,7 @@ def main() -> None:
                      "Part B (seed sweep), Part C (significance tests)."
     )
     p.add_argument("--processed-dir", default="data/processed", type=Path)
-    p.add_argument("--results-dir",   default="results",        type=Path)
+    p.add_argument("--results-dir",   default="results/08_experimental_audit_seed_sweep", type=Path)
     p.add_argument("--device",        default=None)
     p.add_argument("--part",          choices=["a", "b", "c", "all"], default="all")
     p.add_argument("--force-retrain", action="store_true")

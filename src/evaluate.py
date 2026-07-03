@@ -788,7 +788,7 @@ def table2_policy_comparison(
 
 def main(argv: Optional[List[str]] = None) -> int:
     parser = argparse.ArgumentParser(description="Generate paper figures and tables")
-    parser.add_argument("--results-dir",    default="results",       help="Output directory")
+    parser.add_argument("--results-dir",    default="results/00_primary_cvar_qrdqn", help="Output directory")
     parser.add_argument("--proc-dir",       default="data/processed", help="Processed data dir")
     parser.add_argument("--n-episodes",     type=int, default=300,    help="Episodes per policy")
     parser.add_argument("--n-mc",           type=int, default=50,     help="MC samples for RUL CI")

@@ -1,0 +1,7 @@
+Agent,Cost_mean,Cost_std,Catastrophe_pct,State_Dim,N_seeds_evaluated
+D3QN-CVaR (ours),305.186,322.003,0.33,3,1
+CVaR QR-DQN,256.558,41.412,9.0,5,see table_significance.csv
+Risk-Neutral QR-DQN,184.673,36.753,9.67,5,see table_significance.csv
+DDQN,58.694,19.557,1.33,5,see table_significance.csv
+Dueling DQN,63.51,25.666,1.67,5,see table_significance.csv
+PPO,57.306,18.441,1.67,5,see table_significance.csv

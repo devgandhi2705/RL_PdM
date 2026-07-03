@@ -33,7 +33,7 @@ features:
   window_size: 2560               # one file = one window (fixed by PRONOSTIA)
   n_features: 32                  # 12 time-domain + 4 freq-domain, × 2 channels
   sampling_freq: 25600            # Hz — PRONOSTIA accelerometer rate
-  scaler_path: results/scaler.pkl
+  scaler_path: results/_shared_data/scaler.pkl
 
 env:
   # --- cost parameters ---
@@ -92,7 +92,7 @@ training:
   infer_interval:         5     # re-run MC inference every N steps; interpolate between
   seed:                  42
   device:                auto    # "auto" detects GPU; or force "cuda"/"mps"/"cpu"
-  results_dir:           results
+  results_dir:           results/01_rul_predictor
 
 rl:
   total_episodes:         5000
@@ -117,7 +117,7 @@ rl:
   n_final_episodes:       300
   seed:                   42
   processed_dir:          data/processed
-  results_dir:            results
+  results_dir:            results/00_primary_cvar_qrdqn
 
 d3qn:
   total_episodes:         5000
@@ -139,7 +139,7 @@ d3qn:
   n_final_episodes:       300
   seed:                   42
   processed_dir:          data/processed
-  results_dir:            results
+  results_dir:            results/10_dueling_distributional_d3qn_negative_result
 
 logging:
   level: INFO

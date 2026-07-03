@@ -1,0 +1,1 @@
+Significance testing not applicable: D3QN-CVaR evaluated on single seed/checkpoint due to time constraints. Comparisons are point estimates, not statistically validated. See Phase 3 audit (table_significance.csv) for the seed-sensitivity analysis that motivates this caveat.

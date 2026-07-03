@@ -9,7 +9,6 @@ Usage in any module:
 from __future__ import annotations
 
 import logging
-import logging.handlers
 import time
 from pathlib import Path
 
@@ -47,10 +46,8 @@ def setup_logger(name: str) -> logging.Logger:
     logs_dir = Path(__file__).resolve().parent.parent / "logs"
     logs_dir.mkdir(exist_ok=True)
 
-    fh = logging.handlers.RotatingFileHandler(
+    fh = logging.FileHandler(
         logs_dir / "pdm_pipeline.log",
-        maxBytes=10 * 1024 * 1024,
-        backupCount=5,
         encoding="utf-8",
     )
     fh.setLevel(logging.DEBUG)

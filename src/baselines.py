@@ -330,7 +330,7 @@ if __name__ == "__main__":
         from rl_environment import make_env_from_processed  # type: ignore[no-redef]
 
     _PROC_DIR    = _proj / "data" / "processed"
-    _RESULTS_DIR = _proj / "results"
+    _RESULTS_DIR = _proj / "results" / "00_primary_cvar_qrdqn"
     _N_EPISODES  = 100
     _SEED        = 42
 

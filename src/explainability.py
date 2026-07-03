@@ -78,7 +78,7 @@ def run_part_d(results_dir: Path) -> Dict[str, Any]:
     State B = [RUL_norm, sigma_norm], State C = [RUL_norm, sigma_norm, CFP].
     The B -> C delta isolates CFP's marginal effect, holding RUL+variance fixed.
     """
-    csv_path = results_dir / "table_state_ablation.csv"
+    csv_path = results_dir.parent / "05_state_ablation" / "table_state_ablation.csv"
     if not csv_path.exists():
         raise FileNotFoundError(
             f"{csv_path} not found -- run `python -m src.state_ablation` first."
@@ -160,13 +160,13 @@ def run_part_e(
     agent's actual decision input, so plotting these 3 components alongside
     the chosen action is a literal explanation of the policy, not a proxy.
     """
-    ckpt_path = results_dir / "ablation_stateC.pth"
+    ckpt_path = results_dir.parent / "05_state_ablation" / "ablation_stateC.pth"
     if not ckpt_path.exists():
         raise FileNotFoundError(
             f"{ckpt_path} not found -- run `python -m src.state_ablation` first."
         )
 
-    rul_ckpt = results_dir / "rul_model_best.pth"
+    rul_ckpt = results_dir.parent / "01_rul_predictor" / "rul_model_best.pth"
     mc_cache, sigma2_max = _precompute_mc_cache(
         processed_dir, rul_ckpt, bearing_ids=_ALL_BEARINGS,
         n_mc=10, device_str=device_str,
@@ -272,7 +272,7 @@ def main() -> None:
         description="Part D (CFP importance) and Part E (decision explainability)."
     )
     p.add_argument("--processed-dir", default="data/processed", type=Path)
-    p.add_argument("--results-dir",   default="results",        type=Path)
+    p.add_argument("--results-dir",   default="results/09_explainability", type=Path)
     p.add_argument("--device",        default=None)
     p.add_argument("--part",          choices=["d", "e", "all"], default="all")
     args = p.parse_args()

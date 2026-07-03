@@ -286,7 +286,7 @@ def extract_dataset_features(
 def normalize_features(
     X_train: np.ndarray,
     X_test: np.ndarray,
-    scaler_path: str | Path = "results/scaler.pkl",
+    scaler_path: str | Path = "results/_shared_data/scaler.pkl",
 ) -> Tuple[np.ndarray, np.ndarray, StandardScaler]:
     """Fit a StandardScaler on *X_train*, transform both splits, save scaler.
 
@@ -299,7 +299,7 @@ def normalize_features(
     X_test  : np.ndarray, shape (N_test, 32)
         Test feature matrix.
     scaler_path : str or Path
-        Where to persist the fitted scaler (``results/scaler.pkl``).
+        Where to persist the fitted scaler (``results/_shared_data/scaler.pkl``).
 
     Returns
     -------
@@ -339,7 +339,7 @@ def normalize_features(
     return X_train_scaled, X_test_scaled, scaler
 
 
-def load_scaler(scaler_path: str | Path = "results/scaler.pkl") -> StandardScaler:
+def load_scaler(scaler_path: str | Path = "results/_shared_data/scaler.pkl") -> StandardScaler:
     """Load a previously saved :class:`StandardScaler`.
 
     Parameters
@@ -508,7 +508,7 @@ def precompute_and_save_features(
         data_cfg.get("rul_clip", config.get("dataset", {}).get("max_rul", 125))
     )
     scaler_path = Path(
-        config.get("features", {}).get("scaler_path", "results/scaler.pkl")
+        config.get("features", {}).get("scaler_path", "results/_shared_data/scaler.pkl")
     )
     if not scaler_path.is_absolute():
         scaler_path = Path(__file__).resolve().parent.parent / scaler_path
@@ -577,7 +577,7 @@ def precompute_and_save_features(
             bid, X_norm.shape, y_rul.shape, hi_final.shape,
         )
 
-    # 4. Plot HI curves for all bearings → results/hi_verification.png
+    # 4. Plot HI curves for all bearings → results/_shared_data/hi_verification.png
     try:
         import matplotlib
         matplotlib.use("Agg")
@@ -603,7 +603,7 @@ def precompute_and_save_features(
         ax.set_ylim(0, 1.05)
         ax.grid(True, alpha=0.3)
         fig.tight_layout()
-        plot_path = Path(__file__).resolve().parent.parent / "results" / "hi_verification.png"
+        plot_path = Path(__file__).resolve().parent.parent / "results" / "_shared_data" / "hi_verification.png"
         plot_path.parent.mkdir(parents=True, exist_ok=True)
         fig.savefig(plot_path, dpi=150)
         plt.close(fig)

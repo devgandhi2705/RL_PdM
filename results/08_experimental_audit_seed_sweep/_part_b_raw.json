@@ -1,0 +1,86 @@
+{
+  "Risk-Neutral QR-DQN": {
+    "42": {
+      "mean_cost": 317.07112037950805,
+      "std_cost": 289.8247704315652,
+      "catastrophe_rate": 0.17333333333333334,
+      "mean_reward": -317.07112037950805,
+      "mean_n_repairs": 0.0,
+      "mean_n_replacements": 0.0,
+      "action_dist": {
+        "do_nothing": 1.0,
+        "repair": 0.0,
+        "replace": 0.0
+      }
+    },
+    "123": {
+      "mean_cost": 56.61233333333353,
+      "std_cost": 19.476509301092626,
+      "catastrophe_rate": 0.02,
+      "mean_reward": -56.61233333333353,
+      "mean_n_repairs": 0.006666666666666667,
+      "mean_n_replacements": 1.5966666666666667,
+      "action_dist": {
+        "do_nothing": 0.995808438897011,
+        "repair": 0.00014366237651373666,
+        "replace": 0.004047898726475286
+      }
+    }
+  },
+  "Dueling DQN": {
+    "42": {
+      "mean_cost": 66.39500000000008,
+      "std_cost": 22.6780953418342,
+      "catastrophe_rate": 0.03,
+      "mean_reward": -66.39500000000008,
+      "mean_n_repairs": 0.0,
+      "mean_n_replacements": 3.033333333333333,
+      "action_dist": {
+        "do_nothing": 0.9922999466919387,
+        "repair": 0.0,
+        "replace": 0.007700053308061364
+      }
+    },
+    "123": {
+      "mean_cost": 72.93235809357962,
+      "std_cost": 33.55245747171117,
+      "catastrophe_rate": 0.03,
+      "mean_reward": -72.93235809357962,
+      "mean_n_repairs": 0.06333333333333334,
+      "mean_n_replacements": 2.17,
+      "action_dist": {
+        "do_nothing": 0.9936405514344748,
+        "repair": 0.0008467974121871084,
+        "replace": 0.005512651153338075
+      }
+    }
+  },
+  "CVaR QR-DQN (ours)": {
+    "42": {
+      "mean_cost": 336.57022583053555,
+      "std_cost": 280.7393722627404,
+      "catastrophe_rate": 0.17333333333333334,
+      "mean_reward": -336.57022583053555,
+      "mean_n_repairs": 0.0,
+      "mean_n_replacements": 0.0,
+      "action_dist": {
+        "do_nothing": 1.0,
+        "repair": 0.0,
+        "replace": 0.0
+      }
+    },
+    "123": {
+      "mean_cost": 78.64233333333333,
+      "std_cost": 26.36554521635272,
+      "catastrophe_rate": 0.056666666666666664,
+      "mean_reward": -78.64233333333333,
+      "mean_n_repairs": 0.02,
+      "mean_n_replacements": 3.5433333333333334,
+      "action_dist": {
+        "do_nothing": 0.9898138692708378,
+        "repair": 0.0010640945327852675,
+        "replace": 0.00912203619637693
+      }
+    }
+  }
+}

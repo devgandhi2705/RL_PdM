@@ -1,0 +1,3 @@
+State_Config,Dims,Components,Cost_mu,Catastrophe_pct,Avg_Reward
+C,3,"RUL_norm, sigma_norm, CFP",171.394,0.0,-171.394
+D,5,"HI, slope, RUL, repairs, steps",255.695,8.33,-255.695

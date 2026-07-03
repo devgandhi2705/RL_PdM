@@ -81,7 +81,7 @@ _DEFAULTS: Dict[str, Any] = {
     "n_final_episodes":       300,
     "seed":                   42,
     "processed_dir":          "data/processed",
-    "results_dir":            "results",
+    "results_dir":            "results/10_dueling_distributional_d3qn_negative_result",
     "n_mc_samples":           10,
 }
 
@@ -270,6 +270,8 @@ def _train(
     cfg:         Dict[str, Any],
     results_dir: Path,
     dry_run:     bool = False,
+    fast_diag:   bool = False,
+    tag:         str  = "",
 ) -> None:
     total_eps  = int(cfg["total_episodes"])
     eval_intv  = int(cfg["eval_interval"])
@@ -280,9 +282,23 @@ def _train(
         total_eps  = int(cfg.get("_dry_train_episodes", 5))
         eval_intv  = 5
         n_eval_eps = 3
+    elif fast_diag:
+        total_eps  = 1500
+        eval_intv  = 400
+        n_eval_eps = 60
 
-    best_path        = results_dir / "d3qn_cvar_best.pth"
+    if fast_diag and tag:
+        best_path     = results_dir / f"d3qn_diag_{tag}.pth"
+        final_path    = results_dir / f"d3qn_diag_{tag}_final.pth"
+        fallback_path = results_dir / f"d3qn_diag_{tag}_fallback.pth"
+    else:
+        best_path     = results_dir / "d3qn_cvar_best.pth"
+        final_path    = results_dir / "d3qn_cvar_final.pth"
+        fallback_path = results_dir / "d3qn_cvar_fallback_ep1000.pth"
     best_catast_rate = float("inf")
+    n_ckpts_saved    = 0
+    n_ckpts_dn_high  = 0
+    last_eval_dn     = 1.0
 
     # 50-episode diagnostic windows
     win_rewards:  List[float]     = []
@@ -397,7 +413,8 @@ def _train(
             catast    = eval_m["catastrophe_rate"]
             mean_cost = eval_m["mean_total_cost"]
             act       = eval_m["action_distribution"]
-            dn_e      = act["do_nothing"]
+            dn_e         = act["do_nothing"]
+            last_eval_dn = dn_e
 
             logger.info(
                 "  [EVAL ep %5d] catast=%.0f%%  cost=%.2f  "
@@ -411,16 +428,52 @@ def _train(
                             round(catast, 5), round(mean_cost, 3)])
             csv_fh.flush()
 
-            not_collapsed = dn_e < 0.95
-            if catast < best_catast_rate and not_collapsed:
+            if catast <= best_catast_rate:
                 best_catast_rate = catast
                 agent.save_checkpoint(best_path)
-                logger.info("  -> New best: catast=%.1f%%  dn=%.0f%%  checkpoint saved.",
-                            catast * 100, dn_e * 100)
-            elif ep >= 500 and not_collapsed and catast < best_catast_rate:
-                best_catast_rate = catast
-                agent.save_checkpoint(best_path)
-                logger.info("  -> New best (non-collapsed): catast=%.1f%%  saved.", catast * 100)
+                n_ckpts_saved += 1
+                if dn_e >= 0.95:
+                    n_ckpts_dn_high += 1
+                    logger.warning(
+                        "  -> New best: catast=%.1f%% dn=%.0f%% checkpoint saved."
+                        " WARNING: saved checkpoint has dn=%.0f%% -- likely a"
+                        " do-nothing collapse achieving low catastrophe by chance,"
+                        " not a learned policy",
+                        catast * 100, dn_e * 100, dn_e * 100,
+                    )
+                else:
+                    logger.info(
+                        "  -> New best: catast=%.1f%%  dn=%.0f%%  checkpoint saved.",
+                        catast * 100, dn_e * 100,
+                    )
+
+        if ep == 1000 and n_ckpts_saved == 0:
+            agent.save_checkpoint(fallback_path)
+            logger.warning(
+                "FALLBACK: no checkpoint saved by ep 1000 -- saving %s",
+                fallback_path.name,
+            )
+
+        if ep % 500 == 0:
+            logger.info(
+                "Checkpoints saved so far: %d (%d of these have dn>=95%%)",
+                n_ckpts_saved, n_ckpts_dn_high,
+            )
+
+    agent.save_checkpoint(final_path)
+    logger.info("Final checkpoint saved -> %s", final_path.name)
+
+    if fast_diag:
+        verdict = (
+            "COLLAPSED -- do not proceed to full training"
+            if last_eval_dn >= 0.95
+            else "NOT COLLAPSED -- candidate for full 5000-episode confirmation run"
+        )
+        msg = (
+            f"DIAGNOSTIC VERDICT: dn%={last_eval_dn * 100:.0f}% at final eval. {verdict}"
+        )
+        logger.info(msg)
+        print(f"\n{msg}\n")
 
     csv_fh.close()
 
@@ -436,6 +489,19 @@ def _parse_args() -> argparse.Namespace:
                    help="Override total_episodes from config.")
     p.add_argument("--dry-run",       action="store_true",
                    help="Run 5 warmup + 5 training episodes to verify pipeline.")
+    p.add_argument("--fast-diag",     action="store_true",
+                   help="Screening mode: 1500 eps, 60 eval eps, eval every 400.")
+    p.add_argument("--tag",           default="diag", type=str,
+                   help="Label for diag checkpoint files, e.g. 'alpha060'.")
+    p.add_argument("--cvar-alpha",    default=None,   type=float,
+                   help="Override cvar_alpha without editing config.yaml.")
+    p.add_argument("--risk-mode",     default=None,   type=str,
+                   choices=["cvar", "mean"],
+                   help="Override risk aggregation mode: 'cvar' (default) or 'mean' (risk-neutral).")
+    p.add_argument("--c-repair",      default=None,   type=float,
+                   help="Override base repair cost (default 4.0).")
+    p.add_argument("--c-replace",     default=None,   type=float,
+                   help="Override replacement cost (default 8.0).")
     p.add_argument("--device",        default=None)
     p.add_argument("--processed-dir", default=None,  type=Path)
     p.add_argument("--results-dir",   default=None,  type=Path)
@@ -456,10 +522,15 @@ def main() -> None:
     if args.seed is not None:
         cfg["seed"] = args.seed
 
-    dry_run = args.dry_run
+    dry_run   = args.dry_run
+    fast_diag = args.fast_diag
     if dry_run:
-        cfg["warmup_episodes"]  = 5
+        cfg["warmup_episodes"]     = 5
         cfg["_dry_train_episodes"] = 5
+    if args.cvar_alpha is not None:
+        cfg["cvar_alpha"] = args.cvar_alpha
+    if args.risk_mode is not None:
+        cfg["risk_mode"] = args.risk_mode
 
     seed = int(cfg["seed"])
     _set_seed(seed)
@@ -468,13 +539,22 @@ def main() -> None:
 
     results_dir  = Path(str(cfg["results_dir"]))
     processed_dir = Path(str(cfg["processed_dir"]))
-    rul_ckpt     = results_dir / "rul_model_best.pth"
+    rul_ckpt     = results_dir.parent / "01_rul_predictor" / "rul_model_best.pth"
 
     results_dir.mkdir(parents=True, exist_ok=True)
 
+    if fast_diag:
+        logger.info(
+            "=== FAST DIAGNOSTIC MODE: 1500 episodes, 60 eval episodes,"
+            " eval every 400 -- this is a screening run, NOT the final reported result ==="
+        )
     logger.info("=" * 60)
-    logger.info("D3QN-CVaR Trainer | risk_mode=%s | alpha=%.2f | seed=%d | device=%s | dry_run=%s",
-                cfg["risk_mode"], float(cfg["cvar_alpha"]), seed, device_str, dry_run)
+    logger.info(
+        "D3QN-CVaR Trainer | risk_mode=%s | alpha=%.2f | seed=%d | device=%s"
+        " | dry_run=%s | fast_diag=%s | tag=%s",
+        cfg["risk_mode"], float(cfg["cvar_alpha"]), seed, device_str,
+        dry_run, fast_diag, args.tag,
+    )
     logger.info("=" * 60)
 
     if not processed_dir.exists():
@@ -493,6 +573,13 @@ def main() -> None:
         seed       = seed,
         n_mc       = int(cfg["n_mc_samples"]),
     )
+
+    if args.c_repair is not None:
+        env._c_repair_base = float(args.c_repair)
+        logger.info("Cost override: c_repair_base=%.2f", env._c_repair_base)
+    if args.c_replace is not None:
+        env._c_replace = float(args.c_replace)
+        logger.info("Cost override: c_replace=%.2f", env._c_replace)
 
     # ---- Build agent + buffer --------------------------------------------
     agent = D3QNAgent(
@@ -520,9 +607,15 @@ def main() -> None:
     _warmup(env, buffer, n_episodes=int(cfg["warmup_episodes"]), seed=seed)
 
     t0 = time.time()
-    _train(agent, env, buffer, cfg, results_dir, dry_run=dry_run)
-    elapsed = time.time() - t0
-    total_ep = int(cfg.get("_dry_train_episodes", cfg["total_episodes"])) if dry_run else int(cfg["total_episodes"])
+    _train(agent, env, buffer, cfg, results_dir,
+           dry_run=dry_run, fast_diag=fast_diag, tag=args.tag)
+    elapsed  = time.time() - t0
+    if dry_run:
+        total_ep = int(cfg.get("_dry_train_episodes", cfg["total_episodes"]))
+    elif fast_diag:
+        total_ep = 1500
+    else:
+        total_ep = int(cfg["total_episodes"])
     logger.info(
         "Training complete: %d episodes in %.1f min (%.1f ep/min).",
         total_ep, elapsed / 60, total_ep / max(elapsed / 60, 1e-9),

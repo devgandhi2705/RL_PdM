@@ -1131,8 +1131,8 @@ def generate_comparison_table(
 # ===========================================================================
 
 def _load_qrdqn_training_history(results_dir: Path) -> List[float]:
-    """Try to read ep_reward from results/training_log.csv (train.py output)."""
-    log = results_dir / "training_log.csv"
+    """Try to read ep_reward from results/00_primary_cvar_qrdqn/training_log.csv (train.py output)."""
+    log = results_dir.parent / "00_primary_cvar_qrdqn" / "training_log.csv"
     if not log.exists():
         return []
     try:
@@ -1320,7 +1320,7 @@ if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO, format="%(levelname)-8s %(message)s")
 
     proc_dir    = _PROJ / "data" / "processed"
-    results_dir = _PROJ / "results"
+    results_dir = _PROJ / "results" / "04_rl_benchmarks_ddqn_dueling_ppo"
 
     if not proc_dir.exists():
         sys.exit(f"ERROR: {proc_dir} not found. Run feature_extractor.py first.")
@@ -1366,7 +1366,7 @@ if __name__ == "__main__":
         )
 
     # --- Load QR-DQN agents -----------------------------------------------
-    qrdqn_path = results_dir / "qrdqn_best.pth"
+    qrdqn_path = results_dir.parent / "00_primary_cvar_qrdqn" / "qrdqn_best.pth"
 
     rn_agent = QRDQNAgent(risk_mode="mean")
     if qrdqn_path.exists():

@@ -607,10 +607,10 @@ if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO, format="%(levelname)-8s %(message)s")
 
     _proc_dir    = _PROJ / "data" / "processed"
-    _results_dir = _PROJ / "results"
+    _results_dir = _PROJ / "results" / "03_uncertainty_validation"
     _results_dir.mkdir(parents=True, exist_ok=True)
 
-    _ckpt   = _results_dir / "rul_model_best.pth"
+    _ckpt   = _PROJ / "results" / "01_rul_predictor" / "rul_model_best.pth"
     _device = get_device(verbose=True)
 
     if not _ckpt.exists():

@@ -320,17 +320,28 @@ def make_ablation_env(
 # ===========================================================================
 
 def _train_ablation_agent(
-    agent:       QRDQNAgent,
-    env:         StateAblationEnv,
-    n_episodes:  int          = 5_000,
-    warmup_steps: int         = 500,
-    save_path:   Optional[Path] = None,
-    eval_every:  int          = 250,
-    n_eval_ep:   int          = 10,
-    seed:        int          = 42,
-    label:       str          = "",
+    agent:        QRDQNAgent,
+    env:          StateAblationEnv,
+    n_episodes:   int           = 5_000,
+    warmup_steps: int           = 500,
+    save_path:    Optional[Path] = None,
+    eval_every:   int           = 250,
+    n_eval_ep:    int           = 10,
+    seed:         int           = 42,
+    label:        str           = "",
+    fast_diag:    bool          = False,
 ) -> Dict[str, List[float]]:
-    """CVaR QR-DQN training with force_degraded (40%) and warmup random policy."""
+    """QR-DQN training with force_degraded (40%) and warmup random policy.
+
+    fast_diag=True overrides: 1500 episodes, eval every 400, 60 eval episodes.
+    Also switches mid-training eval to _greedy_eval_diag (catastrophe + action dist)
+    and prints a DIAGNOSTIC VERDICT at the end.
+    """
+    if fast_diag:
+        n_episodes = 1500
+        eval_every = 400
+        n_eval_ep  = 60
+
     random.seed(seed)
     np.random.seed(seed)
     torch.manual_seed(seed)
@@ -340,6 +351,8 @@ def _train_ablation_agent(
     best_eval = -math.inf
     total_steps = 0
     tag = f"[{label}]" if label else ""
+    collapse_dn_hist: List[float] = []
+    last_dn_pct = 1.0
 
     for ep in range(1, n_episodes + 1):
         force_deg = (random.random() < 0.40)
@@ -371,19 +384,51 @@ def _train_ablation_agent(
             history["losses"].append(float(np.mean(ep_losses)))
 
         if ep % eval_every == 0:
-            eval_ret = _greedy_eval(agent, env, n_eval_ep, seed)
-            print(
-                f"  {tag} ep={ep:5d}/{n_episodes}  eps={agent.epsilon:.3f}"
-                f"  train={ep_return:.1f}  eval={eval_ret:.1f}"
-            )
-            if eval_ret > best_eval and save_path is not None:
-                best_eval = eval_ret
-                agent.save_checkpoint(save_path)
-                print(f"    -> new best eval={best_eval:.2f}, saved.")
+            if fast_diag:
+                m = _greedy_eval_diag(agent, env, n_eval_ep, seed)
+                last_dn_pct = m["dn_pct"]
+                collapse_dn_hist.append(last_dn_pct)
+                collapsed = (
+                    len(collapse_dn_hist) >= 3
+                    and all(x > 0.90 for x in collapse_dn_hist[-3:])
+                )
+                print(
+                    f"  {tag} ep={ep:5d}/{n_episodes}  eps={agent.epsilon:.3f}"
+                    f"  eval_ret={m['mean_return']:.1f}"
+                    f"  catast={m['catastrophe_rate']:.1%}"
+                    f"  act=[dn={m['dn_pct']:.0%} rp={m['rp_pct']:.0%}"
+                    f" rx={m['rx_pct']:.0%}]"
+                    + ("  *** COLLAPSE ***" if collapsed else "")
+                )
+                if m["mean_return"] > best_eval and save_path is not None:
+                    best_eval = m["mean_return"]
+                    agent.save_checkpoint(save_path)
+                    print(f"    -> new best eval={best_eval:.2f}, saved.")
+            else:
+                eval_ret = _greedy_eval(agent, env, n_eval_ep, seed)
+                print(
+                    f"  {tag} ep={ep:5d}/{n_episodes}  eps={agent.epsilon:.3f}"
+                    f"  train={ep_return:.1f}  eval={eval_ret:.1f}"
+                )
+                if eval_ret > best_eval and save_path is not None:
+                    best_eval = eval_ret
+                    agent.save_checkpoint(save_path)
+                    print(f"    -> new best eval={best_eval:.2f}, saved.")
 
-    # Always save final weights if no best was ever saved
     if save_path is not None and best_eval == -math.inf:
         agent.save_checkpoint(save_path)
+
+    if fast_diag:
+        verdict = (
+            "COLLAPSED -- do-nothing dominates"
+            if last_dn_pct >= 0.95
+            else "NOT COLLAPSED -- QR-DQN stable under fast-diag settings"
+        )
+        msg = (
+            f"DIAGNOSTIC VERDICT [{label} | risk_mode={agent.risk_mode}]:"
+            f" dn%={last_dn_pct * 100:.0f}% at final eval. {verdict}"
+        )
+        print(f"\n{msg}\n")
 
     return history
 
@@ -400,6 +445,35 @@ def _greedy_eval(agent: QRDQNAgent, env, n_episodes: int, seed: int) -> float:
             total += reward
         returns.append(total)
     return float(np.mean(returns))
+
+
+def _greedy_eval_diag(
+    agent: QRDQNAgent, env, n_episodes: int, seed: int
+) -> Dict[str, Any]:
+    """Like _greedy_eval but also returns catastrophe_rate and action distribution."""
+    returns: List[float] = []
+    catastrophes: List[int] = []
+    action_counts = [0, 0, 0]
+    for i in range(n_episodes):
+        obs, _ = env.reset(seed=seed + 10_000 + i)
+        total, done = 0.0, False
+        info: Dict[str, Any] = {}
+        while not done:
+            action = agent.select_action(obs, greedy=True)
+            action_counts[action] += 1
+            obs, reward, terminated, truncated, info = env.step(action)
+            done = terminated or truncated
+            total += reward
+        returns.append(total)
+        catastrophes.append(1 if info.get("is_failure", False) else 0)
+    total_ac = max(1, sum(action_counts))
+    return {
+        "mean_return":      float(np.mean(returns)),
+        "catastrophe_rate": float(np.mean(catastrophes)),
+        "dn_pct":           action_counts[0] / total_ac,
+        "rp_pct":           action_counts[1] / total_ac,
+        "rx_pct":           action_counts[2] / total_ac,
+    }
 
 
 # ===========================================================================
@@ -667,33 +741,61 @@ if __name__ == "__main__":
     parser.add_argument("--n-episodes", type=int, default=5_000)
     parser.add_argument("--n-eval",     type=int, default=300)
     parser.add_argument("--seed",       type=int, default=42)
+    parser.add_argument("--fast-diag",  action="store_true",
+                        help="Screening mode: 1500 eps, 60 eval eps, eval every 400. "
+                             "Trains State C only by default. Matches train_d3qn --fast-diag.")
+    parser.add_argument("--risk-mode",  default="cvar", choices=["cvar", "mean"],
+                        help="Risk aggregation mode: 'cvar' (default) or 'mean' (risk-neutral).")
+    parser.add_argument("--states",     nargs="+", default=None,
+                        choices=["A", "B", "C"],
+                        help="Which state configs to train. Default: C in fast-diag, A B C otherwise.")
     args = parser.parse_args()
 
     logging.basicConfig(level=logging.INFO, format="%(levelname)-8s %(message)s")
 
     proc_dir    = _PROJ / "data" / "processed"
-    results_dir = _PROJ / "results"
-    rul_ckpt    = results_dir / "rul_model_best.pth"
-    qrdqn_ckpt  = results_dir / "qrdqn_best.pth"
+    results_dir = _PROJ / "results" / "05_state_ablation"
+    rul_ckpt    = _PROJ / "results" / "01_rul_predictor" / "rul_model_best.pth"
+    qrdqn_ckpt  = _PROJ / "results" / "00_primary_cvar_qrdqn" / "qrdqn_best.pth"
 
     for p in (proc_dir, rul_ckpt):
         if not p.exists():
             sys.exit(f"ERROR: {p} not found.")
 
+    # Determine which states to process
+    if args.fast_diag:
+        train_states = args.states or ["C"]
+        print(
+            f"\n=== FAST DIAGNOSTIC MODE: 1500 episodes, 60 eval episodes,"
+            f" eval every 400 | risk_mode={args.risk_mode}"
+            f" | states={train_states} ==="
+        )
+    else:
+        train_states = args.states or ["A", "B", "C"]
+
+    # Checkpoint suffix: separate files per (fast_diag, risk_mode) to avoid
+    # overwriting the original 5000-episode cvar checkpoints.
+    if args.fast_diag:
+        _CKPT_SUFFIX = f"_diag_rm{args.risk_mode}"
+    elif args.risk_mode != "cvar":
+        _CKPT_SUFFIX = f"_rm{args.risk_mode}"
+    else:
+        _CKPT_SUFFIX = ""
+
     # --- Precompute MC Dropout cache for all bearings --------------------
     print("\nPrecomputing MC Dropout predictions ...")
     mc_cache, sigma2_max = _precompute_mc_cache(
-        proc_dir   = proc_dir,
-        ckpt_path  = rul_ckpt,
+        proc_dir    = proc_dir,
+        ckpt_path   = rul_ckpt,
         bearing_ids = _ALL_BEARINGS,
-        n_mc       = _MC_SAMPLES,
-        device_str = get_device(verbose=False),
+        n_mc        = _MC_SAMPLES,
+        device_str  = get_device(verbose=False),
     )
 
     # --- Build environments -----------------------------------------------
     print("\nBuilding environments ...")
     envs: Dict[str, Any] = {}
-    for mode in ("A", "B", "C"):
+    for mode in train_states:
         envs[mode] = make_ablation_env(
             proc_dir   = proc_dir,
             state_mode = mode,
@@ -703,37 +805,37 @@ if __name__ == "__main__":
         )
         print(f"  State {mode}: obs_dim={envs[mode].observation_space.shape[0]}")
 
-    # State D: full 5D env (existing environment)
-    envs["D"] = make_env_from_processed(proc_dir, seed=args.seed)
-    print(f"  State D: obs_dim={envs['D'].observation_space.shape[0]}")
+    # State D: full 5D env — only in standard (non-fast-diag) full-ablation mode
+    if not args.fast_diag:
+        envs["D"] = make_env_from_processed(proc_dir, seed=args.seed)
+        print(f"  State D: obs_dim={envs['D'].observation_space.shape[0]}")
 
     # --- Train / load agents A, B, C -------------------------------------
     print("\nTraining / loading agents ...")
     agents: Dict[str, QRDQNAgent] = {}
 
     _CKPT = {
-        "A": results_dir / "ablation_stateA.pth",
-        "B": results_dir / "ablation_stateB.pth",
-        "C": results_dir / "ablation_stateC.pth",
+        m: results_dir / f"ablation_state{m}{_CKPT_SUFFIX}.pth"
+        for m in ("A", "B", "C")
     }
 
-    for mode in ("A", "B", "C"):
+    for mode in train_states:
         state_dim = _STATE_DIMS[mode]
         ckpt_path = _CKPT[mode]
 
         agent = QRDQNAgent(
-            state_dim               = state_dim,
-            n_actions               = 3,
-            risk_mode               = "cvar",
-            cvar_alpha              = 0.25,
-            lr                      = 1e-3,
-            gamma                   = 0.99,
-            epsilon_start           = 1.0,
-            epsilon_end             = 0.05,
-            epsilon_decay_episodes  = 3_000,
-            target_update_freq      = 100,
-            batch_size              = 64,
-            N_quantiles             = 51,
+            state_dim              = state_dim,
+            n_actions              = 3,
+            risk_mode              = args.risk_mode,
+            cvar_alpha             = 0.25,
+            lr                     = 1e-3,
+            gamma                  = 0.99,
+            epsilon_start          = 1.0,
+            epsilon_end            = 0.05,
+            epsilon_decay_episodes = 3_000,
+            target_update_freq     = 100,
+            batch_size             = 64,
+            N_quantiles            = 51,
         )
 
         if args.eval_only or ckpt_path.exists():
@@ -743,51 +845,74 @@ if __name__ == "__main__":
             else:
                 print(f"  State {mode}: checkpoint not found, using random weights.")
         else:
-            print(f"  State {mode}: training for {args.n_episodes} episodes ...")
+            n_eps_display = 1500 if args.fast_diag else args.n_episodes
+            print(
+                f"  State {mode}: training for {n_eps_display} episodes"
+                f" (risk_mode={args.risk_mode}) ..."
+            )
             _train_ablation_agent(
                 agent      = agent,
                 env        = envs[mode],
-                n_episodes = args.n_episodes,
+                n_episodes = args.n_episodes,  # overridden inside when fast_diag=True
                 save_path  = ckpt_path,
                 seed       = args.seed,
                 label      = f"State {mode}",
+                fast_diag  = args.fast_diag,
             )
 
         agents[mode] = agent
 
-    # --- Load existing QR-DQN (state D, CVaR) ----------------------------
-    d_agent = QRDQNAgent(state_dim=5, risk_mode="cvar")
-    if qrdqn_ckpt.exists():
-        d_agent.load_checkpoint(qrdqn_ckpt)
-        print(f"  State D: loaded from {qrdqn_ckpt.name}")
-    else:
-        print(f"  WARNING: {qrdqn_ckpt} not found — State D uses random weights.")
-    agents["D"] = d_agent
+    # --- Load existing QR-DQN (state D, CVaR) — full ablation only -------
+    if not args.fast_diag:
+        d_agent = QRDQNAgent(state_dim=5, risk_mode="cvar")
+        if qrdqn_ckpt.exists():
+            d_agent.load_checkpoint(qrdqn_ckpt)
+            print(f"  State D: loaded from {qrdqn_ckpt.name}")
+        else:
+            print(f"  WARNING: {qrdqn_ckpt} not found — State D uses random weights.")
+        agents["D"] = d_agent
 
-    # --- Evaluate all 4 modes --------------------------------------------
-    print(f"\nEvaluating all states ({args.n_eval} episodes each) ...")
-    results = evaluate_ablation(agents, envs, n_episodes=args.n_eval, seed=args.seed)
+    # --- Evaluate all trained modes --------------------------------------
+    n_eval = 60 if args.fast_diag else args.n_eval
+    print(f"\nEvaluating states {list(agents.keys())} ({n_eval} episodes each) ...")
+    results = evaluate_ablation(agents, envs, n_episodes=n_eval, seed=args.seed)
 
     # --- Summary table to stdout -----------------------------------------
-    print("\n" + "=" * 72)
+    print("\n" + "=" * 80)
     print(f"  {'State':>5}  {'Dims':>4}  {'Components':30s}"
-          f"  {'Cost_mu':>8}  {'Catast%':>8}  {'AvgRew':>8}")
-    print("-" * 72)
+          f"  {'Cost_mu':>8}  {'Catast%':>8}  {'AvgRew':>8}  {'dn%':>5}")
+    print("-" * 80)
     for mode in ("A", "B", "C", "D"):
         if mode not in results:
             continue
-        r = results[mode]
+        r  = results[mode]
+        ad = r.get("action_dist", {})
         print(
             f"  {mode:>5}  {_STATE_DIMS[mode]:>4}  {_STATE_COMPONENTS[mode]:30s}"
             f"  {r['mean_cost']:>8.2f}"
             f"  {r['catastrophe_rate']:>7.1%}"
             f"  {r['mean_reward']:>8.2f}"
+            f"  {ad.get('do_nothing', 0):>4.0%}"
         )
-    print("=" * 72)
+    print("=" * 80)
 
-    # --- Generate outputs ------------------------------------------------
-    print("\nGenerating table and figure ...")
-    generate_ablation_table(results, results_dir)
-    generate_ablation_plot(results, results_dir)
+    # --- Fast-diag collapse verdict --------------------------------------
+    if args.fast_diag:
+        print()
+        for mode in train_states:
+            if mode not in results:
+                continue
+            r  = results[mode]
+            dn = r.get("action_dist", {}).get("do_nothing", 1.0)
+            verdict = "COLLAPSED" if dn >= 0.95 else "NOT COLLAPSED"
+            print(
+                f"FAST DIAG VERDICT [State {mode} | risk_mode={args.risk_mode}]:"
+                f" dn={dn:.0%}  catast={r['catastrophe_rate']:.1%}. {verdict}"
+            )
+    else:
+        # Generate full outputs only in standard mode
+        print("\nGenerating table and figure ...")
+        generate_ablation_table(results, results_dir)
+        generate_ablation_plot(results, results_dir)
 
     print("\nDone. Outputs written to", results_dir)

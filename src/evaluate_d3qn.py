@@ -154,7 +154,7 @@ def _load_agents(
     envs["D3QN-CVaR (ours)"]   = env_3d
 
     # ---- QR-DQN variants (5D) --------------------------------------------
-    qrdqn_ckpt = results_dir / "qrdqn_best.pth"
+    qrdqn_ckpt = results_dir.parent / "00_primary_cvar_qrdqn" / "qrdqn_best.pth"
     if qrdqn_ckpt.exists():
         cvar_agent = QRDQNAgent(state_dim=5, n_actions=3, N_quantiles=51, device=device_str)
         cvar_agent.load_checkpoint(qrdqn_ckpt)
@@ -171,7 +171,7 @@ def _load_agents(
         logger.warning("qrdqn_best.pth not found — skipping QR-DQN variants.")
 
     # ---- DDQN (5D) -------------------------------------------------------
-    ddqn_ckpt = results_dir / "ddqn_best.pth"
+    ddqn_ckpt = results_dir.parent / "04_rl_benchmarks_ddqn_dueling_ppo" / "ddqn_best.pth"
     if ddqn_ckpt.exists():
         try:
             ddqn = DDQNAgent(state_dim=5, n_actions=3, device=device_str)
@@ -184,7 +184,7 @@ def _load_agents(
         logger.warning("ddqn_best.pth not found — skipping DDQN.")
 
     # ---- Dueling DQN (5D) ------------------------------------------------
-    dueling_ckpt = results_dir / "dueling_dqn_best.pth"
+    dueling_ckpt = results_dir.parent / "04_rl_benchmarks_ddqn_dueling_ppo" / "dueling_dqn_best.pth"
     if dueling_ckpt.exists():
         logger.info(
             "Evaluating Dueling DQN (originally trained on 5D state) -- "
@@ -201,7 +201,7 @@ def _load_agents(
         logger.warning("dueling_dqn_best.pth not found — skipping Dueling DQN.")
 
     # ---- PPO (5D) --------------------------------------------------------
-    ppo_ckpt = results_dir / "ppo_best.pth"
+    ppo_ckpt = results_dir.parent / "04_rl_benchmarks_ddqn_dueling_ppo" / "ppo_best.pth"
     if ppo_ckpt.exists():
         try:
             ppo = PPOAgent(state_dim=5, n_actions=3, device=device_str)
@@ -248,7 +248,7 @@ _COLORS = {
 def _fig_learning_curve(results_dir: Path) -> None:
     """D3QN-CVaR and CVaR QR-DQN training rewards (smoothed, window=100)."""
     d3qn_log  = results_dir / "d3qn_training_log.csv"
-    qrdqn_log = results_dir / "training_log.csv"
+    qrdqn_log = results_dir.parent / "00_primary_cvar_qrdqn" / "training_log.csv"
 
     if not d3qn_log.exists():
         logger.warning("d3qn_training_log.csv not found — skipping learning curve figure.")
@@ -500,24 +500,35 @@ def main() -> None:
     import argparse
     p = argparse.ArgumentParser(description="Evaluate D3QN-CVaR vs all prior agents.")
     p.add_argument("--processed-dir", default="data/processed", type=Path)
-    p.add_argument("--results-dir",   default="results",        type=Path)
+    p.add_argument("--results-dir",   default="results/10_dueling_distributional_d3qn_negative_result", type=Path)
     p.add_argument("--device",        default=None)
     p.add_argument("--seed",          default=42, type=int)
     args = p.parse_args()
 
     results_dir   = Path(args.results_dir)
     processed_dir = Path(args.processed_dir)
-    rul_ckpt      = results_dir / "rul_model_best.pth"
+    rul_ckpt      = results_dir.parent / "01_rul_predictor" / "rul_model_best.pth"
     device_str    = args.device or get_device()
     seed          = args.seed
 
     d3qn_ckpt = results_dir / "d3qn_cvar_best.pth"
     if not d3qn_ckpt.exists():
-        logger.error(
-            "ERROR: results/d3qn_cvar_best.pth not found. "
-            "Run 'python -m src.train_d3qn --episodes 5000' first, then re-run this script."
-        )
-        sys.exit(1)
+        for alt in ["d3qn_cvar_final.pth", "d3qn_cvar_fallback_ep1000.pth"]:
+            candidate = results_dir / alt
+            if candidate.exists():
+                logger.warning(
+                    "d3qn_cvar_best.pth not found; using %s instead."
+                    " This checkpoint may be a do-nothing collapse, not a learned policy.",
+                    alt,
+                )
+                d3qn_ckpt = candidate
+                break
+        else:
+            logger.error(
+                "ERROR: results/d3qn_cvar_best.pth not found. "
+                "Run 'python -m src.train_d3qn --episodes 5000' first, then re-run this script."
+            )
+            sys.exit(1)
 
     logger.info("=" * 60)
     logger.info("D3QN-CVaR Evaluation | device=%s | n_eval=%d", device_str, _N_EVAL)

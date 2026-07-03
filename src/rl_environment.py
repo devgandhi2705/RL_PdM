@@ -98,6 +98,10 @@ class PdMBearingEnv(gym.Env):
         self._rng       = np.random.default_rng(seed)
         self._max_steps = max(1, int(max_steps))
 
+        self._c_repair_base = 4.0
+        self._c_repair_inc  = 1.5
+        self._c_replace     = 8.0
+
         # Episode state -- filled by reset()
         first = self._bearing_ids[0]
         self._current_bid:          str        = first
@@ -237,7 +241,7 @@ class PdMBearingEnv(gym.Env):
                 hi_t + hi_gain,
             )
             self._n_repairs += 1
-            step_cost = 4.0 + 1.5 * self._n_repairs
+            step_cost = self._c_repair_base + self._c_repair_inc * self._n_repairs
             reward    = -step_cost
 
         else:  # ACTION_REPLACE
@@ -251,8 +255,8 @@ class PdMBearingEnv(gym.Env):
             self._n_repairs           = 0
             self._steps_since_replace = 0
             self._n_replacements     += 1
-            step_cost                 = 8.0
-            reward                    = -8.0
+            step_cost                 = self._c_replace
+            reward                    = -self._c_replace
 
         # ---- advance timestep (all actions) ------------------------------
         self._t                   += 1
